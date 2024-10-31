@@ -29,4 +29,10 @@ jobs:
     - name: Build Go project
       run: |
         go mod tidy
-        go build -v ./...
+        go build -o output/burner ./...
+
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: go-project-artifact
+        path: output/
