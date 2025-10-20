@@ -113,10 +113,9 @@ func (s *Server) NewNamedInbox(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	i := NewInbox()
-	i.Address = address
+	providedPassword := r.PostFormValue("password")
 
-	exists, err := s.db.EmailAddressExists(i.Address)
+	exists, err := s.db.EmailAddressExists(address)
 	if err != nil {
 		log.Printf("NewNamedInbox: failed to check if email exists: %v", err)
 		s.editInbox(w, r, "Failed to create new inbox: try again")
@@ -124,9 +123,48 @@ func (s *Server) NewNamedInbox(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if exists {
-		log.WithField("address", address).Debug("NewNamedInbox: email already exists")
-		s.editInbox(w, r, "Failed to create new inbox: address in uses")
+		// Address exists - try to recover it with the password
+		if providedPassword == "" {
+			log.WithField("address", address).Debug("NewNamedInbox: email already exists, no password provided")
+			s.editInbox(w, r, "Failed to create new inbox: address in use")
+			return
+		}
+
+		// Get the existing inbox to check the password
+		existingInbox, err := s.db.GetInboxByAddress(address)
+		if err != nil {
+			log.WithField("address", address).WithError(err).Error("NewNamedInbox: failed to get existing inbox")
+			s.editInbox(w, r, "Failed to create new inbox: try again")
+			return
+		}
+
+		// Check if the password matches
+		if existingInbox.Password != providedPassword {
+			log.WithField("address", address).Debug("NewNamedInbox: incorrect password for existing inbox")
+			s.editInbox(w, r, "Failed to create new inbox: address in use")
+			return
+		}
+
+		// Password matches - allow access to the existing inbox
+		log.WithField("address", address).Info("NewNamedInbox: successfully recovered existing inbox")
+		err = session.SetInboxID(existingInbox.ID, w)
+		if err != nil {
+			log.WithError(err).Error("NewNamedInbox: failed to set session cookie for recovered inbox")
+			http.Error(w, "Failed to set session cookie. Please clear cookies and try again.", http.StatusInternalServerError)
+			return
+		}
+
+		http.Redirect(w, r, "/", http.StatusFound)
 		return
+	}
+
+	// Address doesn't exist - create a new inbox
+	i := NewInbox()
+	i.Address = address
+
+	// If a password was provided, use it; otherwise use the auto-generated one
+	if providedPassword != "" {
+		i.Password = providedPassword
 	}
 
 	err = s.createRouteFromInbox(session, i, r.RemoteAddr, w)

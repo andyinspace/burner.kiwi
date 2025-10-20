@@ -1,5 +1,10 @@
 package burner
 
+import (
+	"math/rand"
+	"time"
+)
+
 // Inbox contains data on a temporary inbox including its address and ttl
 type Inbox struct {
 	Address              string `dynamodbav:"email_address" json:"address" db:"address"`
@@ -9,6 +14,20 @@ type Inbox struct {
 	TTL                  int64  `dynamodbav:"ttl" json:"ttl" db:"ttl"`
 	EmailProviderRouteID string `dynamodbav:"ep_routeid" json:"-" db:"ep_routeid"`
 	FailedToCreate       bool   `dynamodbav:"failed_to_create" json:"-" db:"failed_to_create"`
+	Password             string `dynamodbav:"password" json:"password" db:"password"`
+}
+
+// generatePassword generates a random 8-character alphanumeric password
+func generatePassword() string {
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	const passwordLength = 8
+
+	seededRand := rand.New(rand.NewSource(time.Now().UnixNano()))
+	password := make([]byte, passwordLength)
+	for i := range password {
+		password[i] = charset[seededRand.Intn(len(charset))]
+	}
+	return string(password)
 }
 
 // NewInbox returns an inbox with failed to create and route id set.
@@ -16,6 +35,7 @@ func NewInbox() Inbox {
 	return Inbox{
 		FailedToCreate:       false,
 		EmailProviderRouteID: "-",
+		Password:             generatePassword(),
 	}
 }
 

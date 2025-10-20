@@ -66,6 +66,7 @@ func (s *SQLDatabase) createTables() error {
 		ep_routeid text,
 		ttl numeric,
 		failed_to_create bool,
+		password text,
 		primary key (id)
 	);
 	
@@ -89,7 +90,7 @@ func (s *SQLDatabase) createTables() error {
 // SaveNewInbox saves a new inbox
 func (s *SQLDatabase) SaveNewInbox(i burner.Inbox) error {
 	_, err := s.NamedExec(
-		"INSERT INTO inbox (id, address, created_at, created_by, ep_routeid, ttl, failed_to_create) VALUES (:id, lower(:address), :created_at, :created_by, :ep_routeid, :ttl, :failed_to_create)",
+		"INSERT INTO inbox (id, address, created_at, created_by, ep_routeid, ttl, failed_to_create, password) VALUES (:id, lower(:address), :created_at, :created_by, :ep_routeid, :ttl, :failed_to_create, :password)",
 		map[string]interface{}{
 			"id":               i.ID,
 			"address":          i.Address,
@@ -98,6 +99,7 @@ func (s *SQLDatabase) SaveNewInbox(i burner.Inbox) error {
 			"ep_routeid":       i.EmailProviderRouteID,
 			"ttl":              i.TTL,
 			"failed_to_create": i.FailedToCreate,
+			"password":         i.Password,
 		},
 	)
 
@@ -107,14 +109,14 @@ func (s *SQLDatabase) SaveNewInbox(i burner.Inbox) error {
 // GetInboxByID gets an inbox by id
 func (s *SQLDatabase) GetInboxByID(id string) (burner.Inbox, error) {
 	var i burner.Inbox
-	err := s.Get(&i, "SELECT id, address, created_at, created_by, ep_routeid, ttl, failed_to_create FROM inbox WHERE id = $1", id)
+	err := s.Get(&i, "SELECT id, address, created_at, created_by, ep_routeid, ttl, failed_to_create, password FROM inbox WHERE id = $1", id)
 	return i, err
 }
 
 // GetInboxByAddress gets an inbox by address
 func (s *SQLDatabase) GetInboxByAddress(address string) (burner.Inbox, error) {
 	var i burner.Inbox
-	err := s.Get(&i, "SELECT id, address, created_at, created_by, ep_routeid, ttl, failed_to_create FROM inbox WHERE lower(address) = lower($1)", address)
+	err := s.Get(&i, "SELECT id, address, created_at, created_by, ep_routeid, ttl, failed_to_create, password FROM inbox WHERE lower(address) = lower($1)", address)
 	return i, err
 }
 
