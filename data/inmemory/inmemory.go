@@ -84,7 +84,7 @@ func (im *InMemory) SaveNewInbox(i burner.Inbox) error {
 	return nil
 }
 
-//GetInboxByID gets an inbox by the given inbox id
+// GetInboxByID gets an inbox by the given inbox id
 func (im *InMemory) GetInboxByID(id string) (burner.Inbox, error) {
 	im.m.RLock()
 	defer im.m.RUnlock()
@@ -98,7 +98,7 @@ func (im *InMemory) GetInboxByID(id string) (burner.Inbox, error) {
 	return i, nil
 }
 
-//GetInboxByAddress gets an inbox by the given address
+// GetInboxByAddress gets an inbox by the given address
 func (im *InMemory) GetInboxByAddress(address string) (burner.Inbox, error) {
 	im.m.RLock()
 	defer im.m.RUnlock()
@@ -112,7 +112,7 @@ func (im *InMemory) GetInboxByAddress(address string) (burner.Inbox, error) {
 	return burner.Inbox{}, errInboxDoesntExist
 }
 
-//EmailAddressExists returns a bool depending on whether or not the given email address
+// EmailAddressExists returns a bool depending on whether or not the given email address
 // is already assigned to an inbox
 func (im *InMemory) EmailAddressExists(a string) (bool, error) {
 	im.m.RLock()
@@ -149,7 +149,23 @@ func (im *InMemory) SetInboxFailed(i burner.Inbox) error {
 	return nil
 }
 
-//SaveNewMessage saves a given message to memory
+// ExtendInboxTTL extends the TTL of an inbox by updating the TTL field
+func (im *InMemory) ExtendInboxTTL(id string, newTTL int64) error {
+	im.m.Lock()
+	defer im.m.Unlock()
+
+	i, ok := im.emails[id]
+	if !ok {
+		return errInboxDoesntExist
+	}
+
+	i.TTL = newTTL
+	im.emails[id] = i
+
+	return nil
+}
+
+// SaveNewMessage saves a given message to memory
 func (im *InMemory) SaveNewMessage(m burner.Message) error {
 	im.m.Lock()
 	defer im.m.Unlock()
@@ -163,7 +179,7 @@ func (im *InMemory) SaveNewMessage(m burner.Message) error {
 	return nil
 }
 
-//GetMessagesByInboxID returns all messages in a given inbox
+// GetMessagesByInboxID returns all messages in a given inbox
 func (im *InMemory) GetMessagesByInboxID(id string) ([]burner.Message, error) {
 	im.m.RLock()
 	defer im.m.RUnlock()
@@ -183,7 +199,7 @@ func (im *InMemory) GetMessagesByInboxID(id string) ([]burner.Message, error) {
 	return msgsSlice, nil
 }
 
-//GetMessageByID gets a single message by the given inbox and message id
+// GetMessageByID gets a single message by the given inbox and message id
 func (im *InMemory) GetMessageByID(i, m string) (burner.Message, error) {
 	im.m.RLock()
 	defer im.m.RUnlock()

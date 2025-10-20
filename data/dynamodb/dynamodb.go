@@ -21,7 +21,7 @@ type DynamoDB struct {
 	emailAddressIndexName string
 }
 
-//GetNewDynamoDB gets a new dynamodb database or panics
+// GetNewDynamoDB gets a new dynamodb database or panics
 func GetNewDynamoDB(table string) *DynamoDB {
 	awsSession := session.Must(session.NewSession())
 	dynDB := dynamodb.New(awsSession)
@@ -60,7 +60,7 @@ func (d *DynamoDB) SaveNewInbox(i burner.Inbox) error {
 	return nil
 }
 
-//GetInboxByID gets an inbox by the given inbox id
+// GetInboxByID gets an inbox by the given inbox id
 func (d *DynamoDB) GetInboxByID(id string) (burner.Inbox, error) {
 	var inbox burner.Inbox
 
@@ -127,7 +127,7 @@ func (d *DynamoDB) GetInboxByAddress(address string) (burner.Inbox, error) {
 	return d.GetInboxByID(res[0].ID)
 }
 
-//EmailAddressExists returns a bool depending on whether or not the given email address
+// EmailAddressExists returns a bool depending on whether or not the given email address
 // is already assigned to an inbox
 func (d *DynamoDB) EmailAddressExists(a string) (bool, error) {
 	res, err := d.queryEmailIndex(a)
@@ -198,7 +198,35 @@ func (d *DynamoDB) SetInboxFailed(i burner.Inbox) error {
 	return nil
 }
 
-//SaveNewMessage saves a given message to dynamodb
+// ExtendInboxTTL extends the TTL of an inbox by updating the TTL field
+func (d *DynamoDB) ExtendInboxTTL(id string, newTTL int64) error {
+	u := &dynamodb.UpdateItemInput{
+		ExpressionAttributeNames: map[string]*string{
+			"#T": aws.String("ttl"),
+		},
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":t": {
+				N: aws.String(fmt.Sprintf("%d", newTTL)),
+			},
+		},
+		Key: map[string]*dynamodb.AttributeValue{
+			"id": {
+				S: aws.String(id),
+			},
+		},
+		TableName:        aws.String(d.emailsTableName),
+		UpdateExpression: aws.String("SET #T = :t"),
+	}
+
+	_, err := d.dynDB.UpdateItem(u)
+	if err != nil {
+		return fmt.Errorf("DynamoDB - failed to extend inbox TTL: %w", err)
+	}
+
+	return nil
+}
+
+// SaveNewMessage saves a given message to dynamodb
 func (d *DynamoDB) SaveNewMessage(m burner.Message) error {
 	mv, err := dynamodbattribute.MarshalMap(m)
 	if err != nil {
@@ -230,7 +258,7 @@ func (d *DynamoDB) SaveNewMessage(m burner.Message) error {
 	return nil
 }
 
-//GetMessagesByInboxID returns all messages in a given inbox
+// GetMessagesByInboxID returns all messages in a given inbox
 func (d *DynamoDB) GetMessagesByInboxID(i string) ([]burner.Message, error) {
 	var ret map[string]map[string]burner.Message
 
@@ -262,7 +290,7 @@ func (d *DynamoDB) GetMessagesByInboxID(i string) ([]burner.Message, error) {
 	return msgs, nil
 }
 
-//GetMessageByID gets a single message by the given inbox and message id
+// GetMessageByID gets a single message by the given inbox and message id
 func (d *DynamoDB) GetMessageByID(i, m string) (burner.Message, error) {
 	var ret map[string]burner.Message
 	getInput := &dynamodb.GetItemInput{
@@ -298,7 +326,7 @@ func (d *DynamoDB) GetMessageByID(i, m string) (burner.Message, error) {
 	return msg, nil
 }
 
-//createDatabase creates a new database for testing, real creation is done by the cloudformation stack
+// createDatabase creates a new database for testing, real creation is done by the cloudformation stack
 func (d *DynamoDB) createDatabase() error {
 	emails := &dynamodb.CreateTableInput{
 		AttributeDefinitions: []*dynamodb.AttributeDefinition{
