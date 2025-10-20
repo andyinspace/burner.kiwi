@@ -137,6 +137,12 @@ func (s *SQLDatabase) SetInboxFailed(i burner.Inbox) error {
 	return err
 }
 
+// ExtendInboxTTL extends the TTL of an inbox by 24 hours
+func (s *SQLDatabase) ExtendInboxTTL(id string, newTTL int64) error {
+	_, err := s.Exec("UPDATE inbox SET ttl = $1 WHERE id = $2", newTTL, id)
+	return err
+}
+
 // SaveNewMessage saves a new message to the db
 func (s *SQLDatabase) SaveNewMessage(m burner.Message) error {
 	_, err := s.NamedExec("INSERT INTO message (inbox_id, message_id, received_at, ep_id, sender, from_name, from_address, subject, body_html, body_plain, ttl) VALUES (:inbox_id, :message_id, :received_at, :ep_id, :sender, :from_name, :from_address, :subject, :body_html, :body_plain, :ttl)",

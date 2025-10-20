@@ -58,3 +58,8 @@ func (m *MockDatabase) SetInboxFailed(inbox burner.Inbox) error {
 	args := m.Called(inbox)
 	return args.Error(0)
 }
+
+func (m *MockDatabase) ExtendInboxTTL(id string, newTTL int64) error {
+	args := m.Called(id, newTTL)
+	return args.Error(0)
+}

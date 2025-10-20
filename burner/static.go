@@ -3,7 +3,6 @@ package burner
 
 import (
 	"embed"
-	_ "embed"
 	"fmt"
 	"io/fs"
 	"net/http"

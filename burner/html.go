@@ -337,3 +337,82 @@ func (s *Server) ConfirmDeleteInbox(w http.ResponseWriter, r *http.Request) {
 
 	http.Redirect(w, r, "/", http.StatusFound)
 }
+
+// ExtendInbox prompts for a confirmation to extend the inbox TTL
+func (s *Server) ExtendInbox(w http.ResponseWriter, r *http.Request) {
+	session := s.getSessionFromCookie(r)
+	i, err := s.db.GetInboxByID(session.InboxID)
+	if err != nil {
+		log.WithField("inboxID", session.InboxID).WithError(err).Error("ExtendInbox: failed to get inbox")
+		http.Error(w, "Failed to get inbox", http.StatusInternalServerError)
+		return
+	}
+
+	msgs, err := s.db.GetMessagesByInboxID(i.ID)
+	if err != nil {
+		log.WithField("inboxID", i.ID).WithError(err).Error("ExtendInbox: failed to get all messages for inbox")
+		http.Error(w, "Failed to get messages", http.StatusInternalServerError)
+		return
+	}
+
+	sort.SliceStable(msgs, func(i, j int) bool {
+		return msgs[i].ReceivedAt > msgs[j].ReceivedAt
+	})
+
+	vars := inboxOut{
+		Static:   s.getStaticDetails(),
+		Messages: transformMessagesForTemplate(msgs),
+		Inbox:    transformInboxForTemplate(i),
+	}
+
+	err = s.getExtendTemplate().ExecuteTemplate(w, "base", vars)
+	if err != nil {
+		log.Printf("ExtendInbox: failed to execute template: %v", err)
+		http.Error(w, "Failed to execute template", http.StatusInternalServerError)
+	}
+}
+
+// ConfirmExtendInbox extends the inbox TTL by 24 hours
+func (s *Server) ConfirmExtendInbox(w http.ResponseWriter, r *http.Request) {
+	session := s.getSessionFromCookie(r)
+
+	ext, err := strconv.ParseBool(r.PostFormValue("really-extend"))
+	if err != nil {
+		log.Printf("ConfirmExtendInbox: failed to parse really-extend %v", err)
+		http.Error(w, "Failed to parse really-extend", http.StatusInternalServerError)
+		return
+	}
+
+	if !ext {
+		http.Redirect(w, r, "/", http.StatusFound)
+		return
+	}
+
+	// Get the current inbox to determine the new TTL
+	inbox, err := s.db.GetInboxByID(session.InboxID)
+	if err != nil {
+		log.WithField("inboxID", session.InboxID).WithError(err).Error("ConfirmExtendInbox: failed to get inbox")
+		http.Error(w, "Failed to get inbox", http.StatusInternalServerError)
+		return
+	}
+
+	// Calculate potential new TTL
+	newTTL := time.Unix(inbox.TTL, 0).Add(time.Hour * 24).Unix()
+
+	// Safety check: prevent extending beyond 300 hours from creation
+	maxAllowedTTL := time.Unix(inbox.CreatedAt, 0).Add(time.Hour * 300).Unix()
+	if newTTL > maxAllowedTTL {
+		log.WithField("inboxID", session.InboxID).Warn("ConfirmExtendInbox: attempt to extend beyond 300 hour limit")
+		http.Error(w, "Cannot extend inbox beyond 300 hours from creation", http.StatusBadRequest)
+		return
+	}
+
+	err = s.db.ExtendInboxTTL(session.InboxID, newTTL)
+	if err != nil {
+		log.WithField("inboxID", session.InboxID).WithError(err).Error("ConfirmExtendInbox: failed to extend inbox TTL")
+		http.Error(w, "Failed to extend inbox", http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "/", http.StatusFound)
+}

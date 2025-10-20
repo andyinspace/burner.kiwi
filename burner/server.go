@@ -59,6 +59,7 @@ func New(cfg Config, db Database, email EmailProvider) (*Server, error) {
 		s.getIndexTemplate()
 		s.getDeleteTemplate()
 		s.getEditTemplate()
+		s.getExtendTemplate()
 	}
 
 	s.sessionStore.MaxAge(86402) // set max cookie age to 24 hours + 2 seconds
@@ -123,6 +124,22 @@ func New(cfg Config, db Database, email EmailProvider) (*Server, error) {
 			SetVersionHeader,
 			s.SecurityHeaders(),
 		).ThenFunc(s.ConfirmDeleteInbox),
+	).Methods(http.MethodPost)
+
+	s.Router.Handle("/extend",
+		alice.New(
+			s.CheckSessionCookieExists,
+			SetVersionHeader,
+			s.SecurityHeaders(),
+		).ThenFunc(s.ExtendInbox),
+	).Methods(http.MethodGet)
+
+	s.Router.Handle("/extend",
+		alice.New(
+			s.CheckSessionCookieExists,
+			SetVersionHeader,
+			s.SecurityHeaders(),
+		).ThenFunc(s.ConfirmExtendInbox),
 	).Methods(http.MethodPost)
 
 	// JSON API

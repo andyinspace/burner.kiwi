@@ -2,7 +2,6 @@ package burner
 
 import (
 	"embed"
-	_ "embed"
 	"fmt"
 	"html/template"
 	"io/fs"
@@ -134,6 +133,9 @@ var editTemplateOnce sync.Once
 var deleteTemplate *template.Template
 var deleteTemplateOnce sync.Once
 
+var extendTemplate *template.Template
+var extendTemplateOnce sync.Once
+
 func (s *Server) parseTemplate(name string, parts ...string) (*template.Template, error) {
 	t := template.New(name)
 
@@ -219,4 +221,27 @@ func (s *Server) getDeleteTemplate() *template.Template {
 	})
 
 	return deleteTemplate
+}
+
+func (s *Server) getExtendTemplate() *template.Template {
+	gen := func() *template.Template {
+		t, err := s.parseTemplate("index", "base.html", "inbox.html", "extend.html")
+		if err != nil {
+			log.WithError(err).Fatal("getExtendTemplate: failed to get")
+			return nil
+		}
+		return t
+	}
+
+	if s.cfg.Developing {
+		t := gen()
+		return t
+	}
+
+	extendTemplateOnce.Do(func() {
+		t := gen()
+		extendTemplate = t
+	})
+
+	return extendTemplate
 }
