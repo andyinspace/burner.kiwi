@@ -5,7 +5,7 @@
                 <img src="{{.Static.Logo}}" alt="Meet Roger. The pyromaniac kiwi!" class="roger" draggable="false">
                 <div class="inbox-details">
                     <h1 class="inbox-address">{{.Inbox.Address}}</h1>
-                    <p>Expires in {{.Inbox.Expires.Hours}} hours and {{.Inbox.Expires.Minutes}} minutes</p>
+                    <p>Account Expiry: {{.Inbox.Expires.Hours}} hours and {{.Inbox.Expires.Minutes}} minutes</p>
                     <p>Account Recovery Password: {{.Inbox.Password}}</p>
                 </div>
                 <div class="action-buttons">
@@ -34,7 +34,8 @@
 
             </div>
             <div class="sidebar-info">
-                <p>Powered by <a href="https://adhoc-email.com/" target="_blank">Adhoc-Email.com</a></p>
+                <p>Built by <a href="https://adhoc-email.com/" target="_blank">Adhoc-Email.com</a></p>
+                <p>Hosted in Toronto 🇨🇦</p>
             </div>
         </div>
         <div class="email-display {{ if not .HasSelectedMessage }}hide{{end}}">
