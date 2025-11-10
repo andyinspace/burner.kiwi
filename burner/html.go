@@ -205,6 +205,13 @@ func (s *Server) createRouteFromInbox(session *session, i Inbox, remoteAddr stri
 		return fmt.Errorf("Failed to save new inbox: %w", err)
 	}
 
+	// Inject a welcome message into the brand new inbox (non-blocking)
+	go func(inbox Inbox) {
+		if err := s.injectWelcomeMessage(inbox); err != nil {
+			log.WithError(err).WithField("inboxID", inbox.ID).Warn("CreateRouteFromInbox: failed to inject welcome message")
+		}
+	}(i)
+
 	err = session.SetInboxID(i.ID, w)
 	if err != nil {
 		log.WithError(err).Error("CreateRouteFromInbox: failed to set session cookie")

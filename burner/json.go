@@ -72,6 +72,13 @@ func (s *Server) NewInboxJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Inject a welcome message into the brand new inbox (non-blocking)
+	go func(inbox Inbox) {
+		if err := s.injectWelcomeMessage(inbox); err != nil {
+			log.WithError(err).WithField("inboxID", inbox.ID).Warn("NewInboxJSON: failed to inject welcome message")
+		}
+	}(i)
+
 	token, err := s.notariser.Sign("auth", jwtToken{InboxID: i.ID}, i.TTL)
 	if err != nil {
 		log.WithError(err).Error("JSON Index: failed to generate auth toke")
